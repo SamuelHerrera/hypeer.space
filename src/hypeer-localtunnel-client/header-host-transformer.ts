@@ -14,7 +14,7 @@ export default class HeaderHostTransformer extends Transform {
             null,
             this.replaced // after replacing the first instance of the Host header we just become a regular passthrough
                 ? data
-                : data.toString().replace(/(\r\n[Hh]ost: )\S+/, (match, $1) => {
+                : data.toString().replace(/(\r\n[Hh]ost: )\S+/, (match: any, $1: any) => {
                     this.replaced = true;
                     return $1 + this.host;
                 })

@@ -26,6 +26,7 @@
         "@types/pump": "^1.1.0",
         "@types/ripemd160": "^2.0.0",
         "@types/tldjs": "^2.3.0",
+        "@types/uuid": "^8.3.0",
         "@types/webtorrent": "^0.109.0",
         "@types/ws": "^7.4.0",
         "browserify": "^17.0.0",
@@ -50,9 +51,11 @@
         "simple-peer": "^9.9.3",
         "tldjs": "^2.3.1",
         "tweetnacl": "^1.0.3",
+        "uuid": "^8.3.2",
         "websocket": "^1.0.33",
         "webtorrent": "^0.112.0",
         "webtorrent-hybrid": "^4.0.3",
+        "wrtc": "^0.4.7",
         "ws": "^7.4.2"
     }
 }
