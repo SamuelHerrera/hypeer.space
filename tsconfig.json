@@ -12,7 +12,8 @@
         "resolveJsonModule": true
     },
     "exclude": [
-        "build",
-        "docs"
+        "build/**",
+        "docs/**",
+        "static/**"
     ]
 }

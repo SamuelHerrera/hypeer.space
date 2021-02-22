@@ -51,6 +51,7 @@
         "simple-peer": "^9.9.3",
         "tldjs": "^2.3.1",
         "tweetnacl": "^1.0.3",
+        "unique-names-generator": "^4.4.0",
         "uuid": "^8.3.2",
         "websocket": "^1.0.33",
         "webtorrent": "^0.112.0",

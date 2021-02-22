@@ -35,28 +35,31 @@ export class Client extends EventEmitter {
             method: req.method,
             headers: req.headers,
         };
-        const clientReq = request(opt, (clientRes: IncomingMessage) => {
-            res.writeHead(clientRes.statusCode || 200, clientRes.headers);
-            clientRes.pipe(res, { end: false });
-            clientRes.once('end', () => {
-                console.log('response ended');
-                clientRes.unpipe(res);
-                clientRes.emit('readytogo');
-            })
+        const clientReq = request(opt);
+        clientReq.on('socket', (sock: Socket) => {
+            req.once('end', () => {
+                console.log(`request [${req.url}] ended`);
+                req.unpipe(clientReq);
+                clientReq.write('');
+            });
+            clientReq.on('response', (clientRes: IncomingMessage) => {
+                res.writeHead(clientRes.statusCode || 200, clientRes.headers);
+                clientRes.pipe(res, { end: false });
+                clientRes.on('end', () => {
+                    clientRes.unpipe(res);
+                    res.end();
+                    clientReq.end();
+                });
+            });
+            req.pipe(clientReq, { end: false });
         });
         clientReq.once("error", (err) => {
             res.send(err);
         });
-        req.once('end', () => {
-            console.log('request ended');
-            clientReq.write('');
-            req.unpipe(clientReq);
-            clientReq.emit('readytogo');
-        });
-        req.pipe(clientReq, { end: false });
     }
 
     handleUpgrade(req: any, socket: Socket) {
+        console.log('hanlding upgrade');
         socket.once("error", (err: any) => {
             if (err.code == "ECONNRESET" || err.code == "ETIMEDOUT") {
                 return;

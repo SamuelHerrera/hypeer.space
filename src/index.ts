@@ -13,4 +13,5 @@ f.listen(port, () => {
 
     const c = new Client();
     c.entangle();
+    c.entangle();
 });

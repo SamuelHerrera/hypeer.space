@@ -3,11 +3,18 @@ import express, { Express, Request, Response, NextFunction } from "express";
 import _ash from 'express-async-handler'
 import tldjs from 'tldjs';
 const myTldjs = tldjs.fromUserSettings({ validHosts: ['localhost'] });
+import { uniqueNamesGenerator, Config, adjectives, colors, animals } from 'unique-names-generator';
 
 export class ServerFactory {
     private static _app: Express;
     private static _portals: { [key: string]: Client; } = {}
+    private static customConfig: Config = {
+        dictionaries: [adjectives, colors, animals],
+        separator: '-',
+        length: 2,
+    };
     constructor() {
+
     }
 
     static get app() {
@@ -36,11 +43,7 @@ export class ServerFactory {
             switch (req.query.hypeer) {
                 case 'entangle':
                     if (!req.body.subdomain) {
-                        res.json({
-                            status: 'error',
-                            response: 'Must specify id'
-                        });
-                        return;
+                        req.body.subdomain = uniqueNamesGenerator(this.customConfig);
                     }
                     let portal = this._portals[req.body.subdomain]
                     if (!portal) {
@@ -68,7 +71,8 @@ export class ServerFactory {
 
                     res.json({
                         status: 'entangled',
-                        id: '',
+                        id: (<any>peer)._id,
+                        subdomain: req.body.subdomain,
                         candidates: await prom
                     });
                     break;

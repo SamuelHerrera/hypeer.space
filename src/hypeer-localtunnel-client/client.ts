@@ -5,7 +5,6 @@ const wrtc = require("wrtc");
 import HeaderTransformer from './header-host-transformer';
 import { Duplex } from "stream";
 import axios from 'axios';
-import { v4 as uuidv4 } from 'uuid';
 
 export class Client {
     private subdomain: string;
@@ -15,7 +14,7 @@ export class Client {
 
     constructor(opts: any = {}) {
         this.port = opts.cport || parseInt(process.env.CLIENT_PORT || '5500') || 5500;
-        this.subdomain = opts.subdomain || uuidv4();
+        this.subdomain = opts.subdomain || 'test';
     }
 
     public entangle() {
@@ -47,7 +46,7 @@ export class Client {
                 stream.pipe(local, { end: false }).pipe(peer, { end: false });
 
                 local.once('close', (hadError: any) => {
-                    console.log('local connection closed [%s]', hadError);
+                    console.log('local connection closed [%s], had error:', hadError);
                     peer.unpipe(stream);
                     peer.removeListener('close', remoteClose);
                     setTimeout(connLocal, 0);
@@ -58,7 +57,7 @@ export class Client {
         peer.on('data', data => {
             const match = data.toString().match(/^(\w+) (\S+)/);
             if (match) {
-                console.log('request', {
+                console.log('proxying request', {
                     method: match[1],
                     path: match[2],
                 });
@@ -66,16 +65,18 @@ export class Client {
         });
 
         peer.on('connect', () => {
-            console.log('open');
             connLocal();
         });
         peer.on("signal", data => {
             console.log("sending candidates");
             axios.post('http://localhost:3000/?hypeer=entangle',
                 { subdomain: this.subdomain, candidates: data }).then((res: any) => {
-                    console.log('got candidates');
+                    console.log('got candidates for ' + res.data.id);
                     if (!this.peers[res.data.id]) {
                         this.peers[res.data.id] = peer;
+                    }
+                    if (!this.subdomain) {
+                        this.subdomain = res.subdomain;
                     }
                     setTimeout(() => {
                         peer.signal(res.data.candidates);
