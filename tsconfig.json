@@ -13,7 +13,6 @@
     },
     "exclude": [
         "build/**",
-        "docs/**",
-        "static/**"
+        "docs/**"
     ]
 }

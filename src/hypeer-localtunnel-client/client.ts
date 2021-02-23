@@ -1,6 +1,6 @@
 
 import net from 'net';
-import Peer from "simple-peer";
+import Peer, { SignalData } from "simple-peer";
 const wrtc = require("wrtc");
 import HeaderTransformer from './header-host-transformer';
 import { Duplex } from "stream";
@@ -10,15 +10,57 @@ export class Client {
     private subdomain: string;
     private port: number;
     private host: string = process.env.HOST || 'localhost';
+    private _signaling: Peer.Instance;
     private peers: { [key: string]: Peer.Instance } = {}
+    private sendCandidate = (data: string | SignalData) => {
+        console.log("sending candidates by http");
+
+        axios.post('http://localhost:3000/?hypeer=entangle',
+            { subdomain: this.subdomain, candidates: data }).then((res: any) => {
+                console.log('got first candidates for _signaling');
+                if (!this.subdomain) {
+                    this.subdomain = res.subdomain;
+                }
+                this._signaling.signal(res.data.candidates);
+            }).catch((e: any) => {
+                console.log('error' + e);
+            });
+    };
 
     constructor(opts: any = {}) {
         this.port = opts.cport || parseInt(process.env.CLIENT_PORT || '5500') || 5500;
         this.subdomain = opts.subdomain || 'test';
+        this._signaling = new Peer({ initiator: true, wrtc: wrtc, trickle: false });
+        this._signaling.on("signal", (data: string | SignalData) => {
+            this.sendCandidate(data);
+        });
+        this._signaling.on('connect', () => {
+            this.sendCandidate = (data: string | SignalData) => {
+                console.log("sending candidates by _signaling");
+                this._signaling.send(JSON.stringify({ action: 'signal', candidates: data }));
+            }
+        });
+        this._signaling.on('data', (d: Buffer) => {
+            const data = JSON.parse(d && d.length ? d.toString() : '{}');
+            switch (data.action) {
+                case 'signal':
+                    if (data.id) {
+                        this.peers[data.id]?.signal(data.candidates);
+                    } else {
+                        this._signaling.signal(data.candidates);
+                    }
+                    break;
+                case 'create':
+                    this.entangle(data.id);
+                    break;
+                default:
+                    break;
+            }
+        });
     }
 
-    public entangle() {
-        const peer: Peer.Instance = new Peer({ initiator: true, wrtc: wrtc, trickle: false });
+    public entangle(id: string) {
+        const peer: Peer.Instance = new Peer({ initiator: true, wrtc: wrtc, trickle: true });
 
         peer.on('error', err => {
             console.log('got peer connection error', err.message);
@@ -46,7 +88,7 @@ export class Client {
                 stream.pipe(local, { end: false }).pipe(peer, { end: false });
 
                 local.once('close', (hadError: any) => {
-                    console.log('local connection closed [%s], had error:', hadError);
+                    console.log('local connection closed, had error:[%s]', hadError);
                     peer.unpipe(stream);
                     peer.removeListener('close', remoteClose);
                     setTimeout(connLocal, 0);
@@ -67,23 +109,12 @@ export class Client {
         peer.on('connect', () => {
             connLocal();
         });
+
         peer.on("signal", data => {
-            console.log("sending candidates");
-            axios.post('http://localhost:3000/?hypeer=entangle',
-                { subdomain: this.subdomain, candidates: data }).then((res: any) => {
-                    console.log('got candidates for ' + res.data.id);
-                    if (!this.peers[res.data.id]) {
-                        this.peers[res.data.id] = peer;
-                    }
-                    if (!this.subdomain) {
-                        this.subdomain = res.subdomain;
-                    }
-                    setTimeout(() => {
-                        peer.signal(res.data.candidates);
-                    }, 0);
-                }).catch((e: any) => {
-                    console.log('error' + e);
-                });
+            console.log("sending candidates for " + id);
+            this._signaling.send(JSON.stringify({ action: 'signal', id: id, candidates: data }));
         });
+
+        this.peers[id] = peer;
     }
 }
