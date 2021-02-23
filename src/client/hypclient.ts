@@ -6,18 +6,15 @@ import HeaderTransformer from './header-host-transformer';
 import { Duplex } from "stream";
 import axios from 'axios';
 
-export class Client {
+export class HypClient {
     private subdomain: string;
     private port: number;
     private host: string = process.env.HOST || 'localhost';
     private _signaling: Peer.Instance;
     private peers: { [key: string]: Peer.Instance } = {}
     private sendCandidate = (data: string | SignalData) => {
-        console.log("sending candidates by http");
-
         axios.post('http://localhost:3000/?hypeer=entangle',
             { subdomain: this.subdomain, candidates: data }).then((res: any) => {
-                console.log('got first candidates for _signaling');
                 if (!this.subdomain) {
                     this.subdomain = res.subdomain;
                 }
@@ -36,7 +33,6 @@ export class Client {
         });
         this._signaling.on('connect', () => {
             this.sendCandidate = (data: string | SignalData) => {
-                console.log("sending candidates by _signaling");
                 this._signaling.send(JSON.stringify({ action: 'signal', candidates: data }));
             }
         });
@@ -61,37 +57,38 @@ export class Client {
 
     public entangle(id: string) {
         const peer: Peer.Instance = new Peer({ initiator: true, wrtc: wrtc, trickle: true });
-
         peer.on('error', err => {
             console.log('got peer connection error', err.message);
+            delete this.peers[id];
         });
-
         const connLocal = () => {
-            console.log('Initiating conn local');
             peer.pause();
             const local: Duplex = net.connect({ host: this.host, port: this.port });
-            const remoteClose = () => {
-                console.log('peer closed, ending local.');
+            const peerAfterLife = () => {
+                delete this.peers[id];
                 local.end();
             };
-
-            peer.once('close', remoteClose);
+            peer.once('close', peerAfterLife);
             local.once('error', (err: any) => {
                 console.log("error", err)
                 local.end();
-                peer.removeListener('close', remoteClose);
+                peer.removeListener('close', peerAfterLife);
                 setTimeout(connLocal, 0);
             });
 
             local.once('connect', () => {
                 let stream = peer.pipe(new HeaderTransformer({ host: this.host }), { end: false });
                 stream.pipe(local, { end: false }).pipe(peer, { end: false });
-
                 local.once('close', (hadError: any) => {
-                    console.log('local connection closed, had error:[%s]', hadError);
-                    peer.unpipe(stream);
-                    peer.removeListener('close', remoteClose);
-                    setTimeout(connLocal, 0);
+                    if (hadError) {
+                        console.log(`connection ended with error`);
+                    } else {
+                        peer.unpipe(stream);
+                        peer.removeListener('close', peerAfterLife);
+                        if (peer.writable) {
+                            setTimeout(connLocal, 0);
+                        }
+                    }
                 });
             });
         };
@@ -111,7 +108,6 @@ export class Client {
         });
 
         peer.on("signal", data => {
-            console.log("sending candidates for " + id);
             this._signaling.send(JSON.stringify({ action: 'signal', id: id, candidates: data }));
         });
 

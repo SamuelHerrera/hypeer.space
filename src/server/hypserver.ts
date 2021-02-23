@@ -1,6 +1,5 @@
 import { Server, ServerOpts, Socket } from "net";
 import Peer, { SignalData } from 'simple-peer';
-import { PassThrough } from "stream";
 import { v4 as uuidv4 } from 'uuid';
 const wrtc = require("wrtc");
 
@@ -14,10 +13,10 @@ interface HypeerSocket extends Peer.Instance {
 
 }
 
-export class HypeerServer extends Server {
+export class HypServer extends Server {
     private _signaling: Peer.Instance;
     private _online = false;
-    public connectedPeers: { [key: string]: Peer.Instance } = {};
+    private connectedPeers: { [key: string]: Peer.Instance } = {};
 
     constructor(options?: ServerOpts, connectionListener?: (socket: Socket) => void) {
         super(options, connectionListener);
@@ -78,9 +77,11 @@ export class HypeerServer extends Server {
         const peer: HypeerSocket = <HypeerSocket>new Peer({ wrtc: wrtc, trickle: true });
         peer._id = nid;
         peer.setKeepAlive = (enable = false, initialDelay = 0) => {
-            console.log('peer set keep alive ' + enable);
+            clearTimeout(peer.timeout);
             if (enable) {
-                clearTimeout(peer.timeout);
+                peer.timeout = setTimeout(() => {
+                    peer.destroy();
+                }, initialDelay);
             } else {
                 peer.timeout = setTimeout(() => {
                     peer.destroy();
@@ -89,43 +90,34 @@ export class HypeerServer extends Server {
             return peer;
         };
         peer.setTimeout = (timeout: number, callback?: Function) => {
-            console.log('peer set timeout: ' + timeout);
             clearTimeout(peer.timeout);
-            if (timeout)
+            if (timeout) {
+                console.log('peer set timeout: ' + timeout);
                 peer.timeout = setTimeout(() => {
                     peer.destroy();
                     if (callback) callback();
-                }, 1000);
+                }, timeout);
+            }
             return peer;
         };
         peer.unref = () => {
-            console.log('peer unref');
             return peer;
         };
         peer.ref = () => {
-            console.log('peer ref');
             return peer;
         };
         peer.once("close", () => {
-            console.log("peer closed");
             delete this.connectedPeers[nid];
-        });
-        peer.on('unpipe', () => {
-            console.log('peer unpiped');
         });
         peer.once("error", (err: any) => {
             console.log("peer got error: [%s]", err);
             delete this.connectedPeers[nid];
         });
         peer.on("signal", (data: string | SignalData) => {
-            console.log(`peer [${nid}] got signal, sending space location...`);
             this._signaling.send(JSON.stringify({ action: 'signal', id: nid, candidates: data }));
         });
-
         this._signaling.send(JSON.stringify({ action: 'create', id: nid }));
         this.connectedPeers[nid] = peer;
-
-        console.log("peer created, count: %s", Object.keys(this.connectedPeers)?.length);
         return peer;
     }
 

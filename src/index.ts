@@ -1,7 +1,7 @@
 import * as dotenv from "dotenv";
 import express from 'express';
-import { Client } from './hypeer-localtunnel-client/client'
-import { HypMiddleware } from './hypeer-localtunnel-server/hypmiddleware'
+import { HypClient } from './client/hypclient'
+import { HypMiddleware } from './server/hypmiddleware'
 
 dotenv.config();
 const app = express();
@@ -13,7 +13,7 @@ app.use(HypMiddleware.middleware);
 const server = app.listen(port, () => {
     console.log("Server started on port " + port);
 
-    const c = new Client();
+    const c = new HypClient();
 });
 
 server.on('upgrade', HypMiddleware.wsMiddleware);
