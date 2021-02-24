@@ -184,8 +184,8 @@ export class HypMiddleware {
 
 
     private static getKey(req: Request) {
-        const hs = myTldjs.getSubdomain(req.headers.host || '') || '';
-        const c = req.body?.subdomain || hs ? hs : uniqueNamesGenerator(this.customConfig);
+        const hs = myTldjs.getSubdomain(req.headers.host || '') || null;
+        const c = req.body.subdomain || (hs ? hs : uniqueNamesGenerator(this.customConfig));
         return c;
     }
 
