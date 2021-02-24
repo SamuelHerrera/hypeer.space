@@ -5,7 +5,9 @@ const wrtc = require("wrtc");
 import HeaderTransformer from './header-host-transformer';
 import { Duplex } from "stream";
 import axios from 'axios';
+import tldjs from 'tldjs';
 
+const myTldjs = tldjs.fromUserSettings({ validHosts: ['localhost'] });
 interface opts {
     client?: {
         subdomain?: string;
@@ -20,8 +22,8 @@ interface opts {
 export class HypClient {
     private spaceControl: string;
     private subdomain: string | null = null;
-    private port: any;
-    private host: string = 'localhost';
+    private localhostPort: any;
+    private localhostName: string = 'localhost';
 
     private _signaling: Peer.Instance;
     private peers: { [key: string]: Peer.Instance } = {}
@@ -30,21 +32,26 @@ export class HypClient {
         if (!opts.localhost.port) {
             throw 'Missing localhost.port argument';
         }
-        this.port = opts.localhost.port;
-        this.spaceControl = opts.client?.spaceControlUrl
-            ? opts.client?.spaceControlUrl
-            : process.env.IS_PROD == 'true' ? 'https://hypeer.space?hypeer=entangle' : `http://localhost:3000?hypeer=entangle`;
-        this.host = opts.localhost.host ? opts.localhost.host : this.host;
+        this.localhostPort = opts.localhost.port;
+        this.spaceControl = (opts.client?.spaceControlUrl
+            ? opts.client.spaceControlUrl
+            : process.env.IS_PROD == 'true' ? 'https://hypeer.space' : `http://localhost:${process.env.PORT || 3000}`)
+            + '?hypeer=entangle';
+        this.localhostName = opts.localhost.host ? opts.localhost.host : this.localhostName;
         let sendCandidate = (data: string | SignalData) => {
             axios.post(this.spaceControl,
                 { subdomain: opts.client?.subdomain, candidates: data }).then((res: any) => {
-                    this.subdomain = res.subdomain;
-                    this._signaling.signal(res.data.candidates);
+                    if (res.data?.status == 'entangled') {
+                        this.subdomain = res.data.subdomain;
+                        this._signaling.signal(res.data.candidates);
+                    } else {
+                        console.log(`Is not possible to stablish the connection.`);
+                        this._signaling?.destroy();
+                    }
                 }).catch((e: any) => {
                     console.log('error' + e);
                 });
         };
-
         this._signaling = new Peer({ initiator: true, wrtc: wrtc, trickle: false });
         this._signaling.on("signal", (data: string | SignalData) => {
             sendCandidate(data);
@@ -53,6 +60,7 @@ export class HypClient {
             sendCandidate = (data: string | SignalData) => {
                 this._signaling.send(JSON.stringify({ action: 'signal', candidates: data }));
             }
+            console.log(`Client entangled. http://${this.subdomain}.${myTldjs.getDomain(this.spaceControl)}:${process.env.PORT || 3000}`);
         });
         this._signaling.on('data', (d: Buffer) => {
             const data = JSON.parse(d && d.length ? d.toString() : '{}');
@@ -73,6 +81,13 @@ export class HypClient {
         });
     }
 
+    public destroy() {
+        this._signaling.destroy();
+        for (const k in this.peers) {
+            this.peers[k]?.destroy();
+        }
+    }
+
     public entangle(id: string) {
         const peer: Peer.Instance = new Peer({ initiator: true, wrtc: wrtc, trickle: true });
         peer.on('error', err => {
@@ -81,7 +96,7 @@ export class HypClient {
         });
         const connLocal = () => {
             peer.pause();
-            const local: Duplex = net.connect({ host: this.host, port: this.port });
+            const local: Duplex = net.connect({ host: this.localhostName, port: this.localhostPort });
             const peerAfterLife = () => {
                 delete this.peers[id];
                 local.end();
@@ -95,7 +110,7 @@ export class HypClient {
             });
 
             local.once('connect', () => {
-                let stream = peer.pipe(new HeaderTransformer({ host: this.host }), { end: false });
+                let stream = peer.pipe(new HeaderTransformer({ host: this.localhostName }), { end: false });
                 stream.pipe(local, { end: false }).pipe(peer, { end: false });
                 local.once('close', (hadError: any) => {
                     if (hadError) {

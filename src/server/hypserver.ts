@@ -16,7 +16,7 @@ interface HypeerSocket extends Peer.Instance {
 export class HypServer extends Server {
     private _signaling: Peer.Instance;
     private _online = false;
-    private connectedPeers: { [key: string]: Peer.Instance } = {};
+    private _connectedPeers: { [key: string]: Peer.Instance } = {};
 
     constructor(options?: ServerOpts, connectionListener?: (socket: Socket) => void) {
         super(options, connectionListener);
@@ -41,11 +41,14 @@ export class HypServer extends Server {
                         break;
                 }
             }).on("connect", () => {
-                console.log("Server online");
                 this._online = true;
                 this.emit("online");
             }).once("close", () => {
-                console.log("Server offline");
+                this._online = false;
+                this.emit("offline");
+            }).once("error", (err: any) => {
+                console.log("signaling got error");
+                this._online = false;
                 this.emit("offline");
             });
     }
@@ -53,8 +56,8 @@ export class HypServer extends Server {
     public close(cb?: ((err?: Error | undefined) => void) | undefined) {
         let error = undefined;
         try {
-            for (let p in this.connectedPeers) {
-                this.connectedPeers[p].destroy();
+            for (let p in this._connectedPeers) {
+                this._connectedPeers[p].destroy();
             }
             this._signaling.destroy();
         } catch (e) {
@@ -66,7 +69,7 @@ export class HypServer extends Server {
 
     public signal(data: { id?: string, candidates: string | SignalData }) {
         if (data.id) {
-            this.connectedPeers[data.id].signal(data.candidates);
+            this._connectedPeers[data.id].signal(data.candidates);
         } else {
             this._signaling.signal(data.candidates);
         }
@@ -107,22 +110,26 @@ export class HypServer extends Server {
             return peer;
         };
         peer.once("close", () => {
-            delete this.connectedPeers[nid];
+            delete this._connectedPeers[nid];
         });
         peer.once("error", (err: any) => {
             console.log("peer got error: [%s]", err);
-            delete this.connectedPeers[nid];
+            delete this._connectedPeers[nid];
         });
         peer.on("signal", (data: string | SignalData) => {
             this._signaling.send(JSON.stringify({ action: 'signal', id: nid, candidates: data }));
         });
         this._signaling.send(JSON.stringify({ action: 'create', id: nid }));
-        this.connectedPeers[nid] = peer;
+        this._connectedPeers[nid] = peer;
         return peer;
     }
 
     get online() {
         return this._online;
+    }
+
+    get connectedPeers() {
+        return Object.keys(this._connectedPeers).length;
     }
 
 }

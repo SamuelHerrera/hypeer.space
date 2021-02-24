@@ -2,22 +2,25 @@ import { Agent } from "http";
 import { HypServer } from "./hypserver";
 
 export class HypAgent extends Agent {
-    public server: HypServer;
+    private _server: HypServer;
 
     constructor() {
-        super({ keepAlive: true, maxSockets: 15, maxFreeSockets: 5, timeout: 5000, keepAliveMsecs: 15000 });
-        this.server = new HypServer();
-        this.server.once("error", (err) => {
+        super({
+            keepAlive: (process.env.AGENT_KEEP_ALIVE || 'true') == 'true',
+            keepAliveMsecs: parseInt(process.env.AGENT_KEEP_ALIVE_MSECS || '10000'),
+            maxSockets: parseInt(process.env.AGENT_MAX_SOCKETS || '50')
+        });
+        this._server = new HypServer();
+        this._server.once("error", (err) => {
             throw err;
         });
     }
 
     public createConnection(opt: any, cb: any) {
-        const peer = this.server.createConnection();
+        const peer = this._server.createConnection();
         peer.on("connect", () => {
             cb(null, peer);
         });
-
     }
 
     public signal(candidates: string | {
@@ -25,23 +28,27 @@ export class HypAgent extends Agent {
         sdp?: any;
         candidate?: any;
     }) {
-        this.server.signal({ candidates });
+        this._server.signal({ candidates });
     }
 
     public onSignal(cb: (...args: any[]) => void) {
-        this.server?.on('signal', cb);
+        this._server?.on('signal', cb);
     }
 
     public onceClose(cb: (...args: any[]) => void) {
-        this.server?.once('close', cb);
+        this._server?.once('offline', cb);
     }
 
     public removeListener(event: string | symbol, listener: (...args: any[]) => void) {
-        this.server.removeListener(event, listener);
+        this._server.removeListener(event, listener);
     }
 
     public destroy() {
-        this.server.close();
+        this._server.close();
         super.destroy();
+    }
+
+    public connectedPeers() {
+        return this._server?.connectedPeers;
     }
 }
