@@ -20,34 +20,34 @@ export class HypServer extends Server {
 
     constructor(options?: ServerOpts, connectionListener?: (socket: Socket) => void) {
         super(options, connectionListener);
-        this._signaling = new Peer({ wrtc: wrtc, trickle: false });
+        this._signaling = this.initSignaling();
+    }
 
-        this._signaling.on("signal", (data: string | SignalData) => {
-            if (this._online) {
-                this.signal({ candidates: data })
-            } else {
-                this.emit('signal', data);
-            }
-        });
-        this._signaling.on('data', (d: Buffer) => {
-            const data = JSON.parse(d && d.length ? d.toString() : '{}');
-            switch (data.action) {
-                case 'signal':
-                    this.signal(data);
-                    break;
-                default:
-                    break;
-            }
-        });
-        this._signaling.on("connect", () => {
-            console.log("Server online");
-            this._online = true;
-            this.emit("online");
-        });
-        this._signaling.once("close", () => {
-            console.log("Server offline");
-            this.emit("offline");
-        });
+    private initSignaling() {
+        return new Peer({ wrtc: wrtc, trickle: false })
+            .on("signal", (data: string | SignalData) => {
+                if (this._online) {
+                    this.signal({ candidates: data })
+                } else {
+                    this.emit('signal', data);
+                }
+            }).on('data', (d: Buffer) => {
+                const data = JSON.parse(d && d.length ? d.toString() : '{}');
+                switch (data.action) {
+                    case 'signal':
+                        this.signal(data);
+                        break;
+                    default:
+                        break;
+                }
+            }).on("connect", () => {
+                console.log("Server online");
+                this._online = true;
+                this.emit("online");
+            }).once("close", () => {
+                console.log("Server offline");
+                this.emit("offline");
+            });
     }
 
     public close(cb?: ((err?: Error | undefined) => void) | undefined) {

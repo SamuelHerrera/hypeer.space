@@ -6,33 +6,51 @@ import HeaderTransformer from './header-host-transformer';
 import { Duplex } from "stream";
 import axios from 'axios';
 
+interface opts {
+    client?: {
+        subdomain?: string;
+        spaceControlUrl?: string;
+    };
+    localhost: {
+        port: number;
+        host?: string
+    };
+}
+
 export class HypClient {
-    private subdomain: string;
-    private port: number;
-    private host: string = process.env.HOST || 'localhost';
+    private spaceControl: string;
+    private subdomain: string | null = null;
+    private port: any;
+    private host: string = 'localhost';
+
     private _signaling: Peer.Instance;
     private peers: { [key: string]: Peer.Instance } = {}
-    private sendCandidate = (data: string | SignalData) => {
-        axios.post('http://localhost:3000/?hypeer=entangle',
-            { subdomain: this.subdomain, candidates: data }).then((res: any) => {
-                if (!this.subdomain) {
-                    this.subdomain = res.subdomain;
-                }
-                this._signaling.signal(res.data.candidates);
-            }).catch((e: any) => {
-                console.log('error' + e);
-            });
-    };
 
-    constructor(opts: any = {}) {
-        this.port = opts.cport || parseInt(process.env.CLIENT_PORT || '5500') || 5500;
-        this.subdomain = opts.subdomain || 'test';
+    constructor(opts: opts) {
+        if (!opts.localhost.port) {
+            throw 'Missing localhost.port argument';
+        }
+        this.port = opts.localhost.port;
+        this.spaceControl = opts.client?.spaceControlUrl
+            ? opts.client?.spaceControlUrl
+            : process.env.IS_PROD == 'true' ? 'https://hypeer.space?hypeer=entangle' : `http://localhost:3000?hypeer=entangle`;
+        this.host = opts.localhost.host ? opts.localhost.host : this.host;
+        let sendCandidate = (data: string | SignalData) => {
+            axios.post(this.spaceControl,
+                { subdomain: opts.client?.subdomain, candidates: data }).then((res: any) => {
+                    this.subdomain = res.subdomain;
+                    this._signaling.signal(res.data.candidates);
+                }).catch((e: any) => {
+                    console.log('error' + e);
+                });
+        };
+
         this._signaling = new Peer({ initiator: true, wrtc: wrtc, trickle: false });
         this._signaling.on("signal", (data: string | SignalData) => {
-            this.sendCandidate(data);
+            sendCandidate(data);
         });
         this._signaling.on('connect', () => {
-            this.sendCandidate = (data: string | SignalData) => {
+            sendCandidate = (data: string | SignalData) => {
                 this._signaling.send(JSON.stringify({ action: 'signal', candidates: data }));
             }
         });

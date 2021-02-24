@@ -20,7 +20,7 @@ export class HypAgent extends Agent {
 
     }
 
-    public init(candidates: string | {
+    public signal(candidates: string | {
         type?: 'offer' | 'pranswer' | 'answer' | 'rollback';
         sdp?: any;
         candidate?: any;

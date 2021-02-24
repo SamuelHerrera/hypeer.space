@@ -72,38 +72,36 @@ export class HypMiddleware {
         let key: string;
         switch (req.query.hypeer) {
             case 'entangle':
-                if (!req.body.subdomain) {
-                    req.body.subdomain = uniqueNamesGenerator(this.customConfig);
-                }
                 key = this.getKey(req);
-                let portal = this._agents[key];
-                if (!portal) {
-                    portal = new HypAgent();
-                    portal.onceClose(() => {
+                let agent = this._agents[key];
+                if (!agent) {
+                    agent = new HypAgent();
+                    agent.onceClose(() => {
                         console.log("middleware removing closed client: %s", key);
                         delete this._agents[key];
-                        portal.destroy();
+                        agent.destroy();
                     });
-                    console.log("agent initialized: http://%s.localhost:3000", req.body.subdomain);
-                    this._agents[key] = portal;
+                    console.log("agent initialized: http://%s.localhost:3000", key);
+                    this._agents[key] = agent;
+                    const timeout = setTimeout(() => {
+                        res.json({
+                            status: 'timed out',
+                            subdomain: req.body.subdomain
+                        });
+                    }, this.ENTANGLE_TIMEOUT);
+                    const handler = (data: any) => {
+                        clearTimeout(timeout);
+                        agent.removeListener('signal', handler);
+                        res.json({
+                            status: 'entangled',
+                            subdomain: req.body.subdomain,
+                            candidates: data
+                        });
+                    };
+                    agent.onSignal(handler);
                 }
-                const timeout = setTimeout(() => {
-                    res.json({
-                        status: 'timed out',
-                        subdomain: req.body.subdomain
-                    });
-                }, this.ENTANGLE_TIMEOUT);
-                const handler = (data: any) => {
-                    clearTimeout(timeout);
-                    portal.removeListener('signal', handler);
-                    res.json({
-                        status: 'entangled',
-                        subdomain: req.body.subdomain,
-                        candidates: data
-                    });
-                };
-                portal.onSignal(handler);
-                portal.init(req.body.candidates);
+
+                agent.signal(req.body.candidates);
                 break;
             case 'release':
                 key = this.getKey(req);
@@ -173,9 +171,8 @@ export class HypMiddleware {
     }
 
     private static getKey(req: Request) {
-        const host = req.headers.host || '';
-        const domain = myTldjs.getDomain(host) || '';
-        const subdomain = myTldjs.getSubdomain(host) || req.body.subdomain || '';
-        return `${domain}-${subdomain}`;
+        const hs = myTldjs.getSubdomain(req.headers.host || '') || '';
+        const c = req.body?.subdomain || hs ? hs : uniqueNamesGenerator(this.customConfig);
+        return c;
     }
 }
