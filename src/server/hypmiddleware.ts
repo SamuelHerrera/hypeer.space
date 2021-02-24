@@ -17,18 +17,51 @@ export class HypMiddleware {
     };
 
     public static get middleware() {
-        return this.requestHandler.bind(this);
+        return (req: Request, res: Response, next: NextFunction) => {
+            if (req.query.hypeer) {
+                this.hypeerSpaceControl(req, res, next);
+            } else {
+                this.hypeerPortalAgentControl(req, res, next);
+            }
+        }
     }
 
     public static get wsMiddleware() {
-        return this.handleUpgrade.bind(this);
-    }
-
-    private static requestHandler(req: Request, res: Response, next: NextFunction) {
-        if (req.query.hypeer) {
-            this.hypeerSpaceControl(req, res, next);
-        } else {
-            this.hypeerPortalAgentControl(req, res, next);
+        return (req: Request, socket: Socket) => {
+            const key = this.getKey(req);
+            const agent: HypAgent = this._agents[key];
+            if (agent) {
+                socket.once("error", (err: any) => {
+                    if (err.code == "ECONNRESET" || err.code == "ETIMEDOUT") {
+                        return;
+                    }
+                    console.error(err);
+                });
+                agent.createConnection({}, (err: any, conn: any) => {
+                    console.log("< [up] %s", req.url);
+                    if (err) {
+                        socket.end();
+                        return;
+                    }
+                    if (!socket.readable || !socket.writable) {
+                        conn.destroy();
+                        socket.end();
+                        return;
+                    }
+                    const arr = [`${req.method} ${req.url} HTTP/${req.httpVersion}`];
+                    for (let i = 0; i < req.rawHeaders.length - 1; i += 2) {
+                        arr.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
+                    }
+                    arr.push("");
+                    arr.push("");
+                    pump(conn, socket);
+                    pump(socket, conn);
+                    conn.write(arr.join("\r\n"));
+                });
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
@@ -60,8 +93,11 @@ export class HypMiddleware {
                 req.pipe(clientReq, { end: false });
             });
             clientReq.once("error", (err) => {
-                console.log('error in request ' + err);
-                res.send(err);
+                res.send({
+                    status: 503,
+                    error: 'Service Unavailable',
+                    message: 'Origin server was disconnected, try again later.'
+                });
             });
         } else {
             next();
@@ -81,12 +117,11 @@ export class HypMiddleware {
                         delete this._agents[key];
                         agent.destroy();
                     });
-                    console.log("agent initialized: http://%s.localhost:3000", key);
                     this._agents[key] = agent;
                     const timeout = setTimeout(() => {
                         res.json({
                             status: 'timed out',
-                            subdomain: req.body.subdomain
+                            subdomain: key
                         });
                     }, this.ENTANGLE_TIMEOUT);
                     const handler = (data: any) => {
@@ -94,7 +129,7 @@ export class HypMiddleware {
                         agent.removeListener('signal', handler);
                         res.json({
                             status: 'entangled',
-                            subdomain: req.body.subdomain,
+                            subdomain: key,
                             candidates: data
                         });
                     };
@@ -104,6 +139,7 @@ export class HypMiddleware {
                 agent.signal(req.body.candidates);
                 break;
             case 'release':
+                if (!this.secret(req, res)) return;
                 key = this.getKey(req);
                 if (!this._agents[key]) {
                     res.json({
@@ -119,6 +155,7 @@ export class HypMiddleware {
                 }
                 break;
             case 'restart':
+                if (!this.secret(req, res)) return;
                 for (const k in this._agents) {
                     this._agents[k].destroy();
                 }
@@ -127,52 +164,38 @@ export class HypMiddleware {
                     response: 'ok'
                 });
                 break;
+            case 'stats':
+                if (!this.secret(req, res)) return;
+                const keys = Object.keys(this._agents);
+                const clientStats: any[] = [];
+                for (const k of keys) {
+                    const s = { name: k, connections: this._agents[k]?.connectedPeers() };
+                    clientStats.push(s);
+                }
+                res.json({
+                    client: clientStats,
+                    count: keys.length,
+                });
+                break;
             default:
                 next();
         }
     }
 
-    private static handleUpgrade(req: any, socket: Socket) {
-        console.log('hanlding upgrade');
-        const key = this.getKey(req);
-        const agent: HypAgent = this._agents[key];
-        if (agent) {
-            socket.once("error", (err: any) => {
-                if (err.code == "ECONNRESET" || err.code == "ETIMEDOUT") {
-                    return;
-                }
-                console.error(err);
-            });
-            agent.createConnection({}, (err: any, conn: any) => {
-                console.log("< [up] %s", req.url);
-                if (err) {
-                    socket.end();
-                    return;
-                }
-                if (!socket.readable || !socket.writable) {
-                    conn.destroy();
-                    socket.end();
-                    return;
-                }
-                const arr = [`${req.method} ${req.url} HTTP/${req.httpVersion}`];
-                for (let i = 0; i < req.rawHeaders.length - 1; i += 2) {
-                    arr.push(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}`);
-                }
-                arr.push("");
-                arr.push("");
-                pump(conn, socket);
-                pump(socket, conn);
-                conn.write(arr.join("\r\n"));
-            });
-            return true;
-        } else {
-            return false;
-        }
-    }
 
     private static getKey(req: Request) {
         const hs = myTldjs.getSubdomain(req.headers.host || '') || '';
         const c = req.body?.subdomain || hs ? hs : uniqueNamesGenerator(this.customConfig);
         return c;
+    }
+
+    private static secret(req: Request, res: Response) {
+        if (process.env.SECRET) {
+            if (!req.query.secret || process.env.SECRET != req.query.secret) {
+                res.status(403);
+                return false;
+            }
+        }
+        return true;
     }
 }
