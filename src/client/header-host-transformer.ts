@@ -3,21 +3,25 @@ import { Transform } from 'stream';
 export default class HeaderHostTransformer extends Transform {
     private host: string;
     private replaced: boolean;
+
+    private consumer: (cb: (err: any, data: any) => void, data: any) => void;
+
     constructor(opts: any = {}) {
         super(opts);
         this.host = opts.host || 'localhost';
         this.replaced = false;
+        this.consumer = (cb, data) => {
+            const _d = data.toString().replace(/(\r\n[Hh]ost: )\S+/, (match: any, $1: any) => {
+                return $1 + this.host;
+            });
+            this.consumer = (_cb, _data) => {
+                _cb(null, _data);
+            };
+            cb(null, _d);
+        };
     }
 
     _transform(data: any, encoding: any, callback: any) {
-        callback(
-            null,
-            this.replaced // after replacing the first instance of the Host header we just become a regular passthrough
-                ? data
-                : data.toString().replace(/(\r\n[Hh]ost: )\S+/, (match: any, $1: any) => {
-                    this.replaced = true;
-                    return $1 + this.host;
-                })
-        );
+        this.consumer(callback, data);
     }
 }
