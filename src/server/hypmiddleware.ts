@@ -104,7 +104,7 @@ export class HypMiddleware {
             res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
             res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type')
             res.setHeader('Access-Control-Allow-Credentials', 'true')
-            res.status(404).end();
+            res.json({status: 'available'}).end();
         }
     }
 
