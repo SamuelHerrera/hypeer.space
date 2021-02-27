@@ -100,10 +100,6 @@ export class HypMiddleware {
                 });
             });
         } else {
-            res.setHeader('Access-Control-Allow-Origin', '*')
-            res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-            res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type')
-            res.setHeader('Access-Control-Allow-Credentials', 'true')
             res.send('Not entangled').end();
         }
     }
@@ -114,32 +110,32 @@ export class HypMiddleware {
             case 'entangle':
                 key = this.getKey(req);
                 let agent = this._agents[key];
-                if (!agent) {
-                    agent = new HypAgent();
-                    agent.onceClose(() => {
-                        console.log("middleware removing closed client: %s", key);
-                        delete this._agents[key];
-                        agent.destroy();
+                if (agent) {
+                    agent.destroy();
+                } 
+                agent = new HypAgent();
+                agent.onceClose(() => {
+                    console.log("middleware removing closed client: %s", key);
+                    delete this._agents[key];
+                    agent.destroy();
+                });
+                this._agents[key] = agent;
+                const timeout = setTimeout(() => {
+                    res.json({
+                        status: 'timed out',
+                        subdomain: key
                     });
-                    this._agents[key] = agent;
-                    const timeout = setTimeout(() => {
-                        res.json({
-                            status: 'timed out',
-                            subdomain: key
-                        });
-                    }, this.ENTANGLE_TIMEOUT);
-                    const handler = (data: any) => {
-                        clearTimeout(timeout);
-                        agent.removeListener('signal', handler);
-                        res.json({
-                            status: 'entangled',
-                            subdomain: key,
-                            candidates: data
-                        });
-                    };
-                    agent.onSignal(handler);
-                }
-
+                }, this.ENTANGLE_TIMEOUT);
+                const handler = (data: any) => {
+                    clearTimeout(timeout);
+                    agent.removeListener('signal', handler);
+                    res.json({
+                        status: 'entangled',
+                        subdomain: key,
+                        candidates: data
+                    });
+                };
+                agent.onSignal(handler);
                 agent.signal(req.body.candidates);
                 break;
             case 'release':
