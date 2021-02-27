@@ -100,7 +100,12 @@ export class HypMiddleware {
                 });
             });
         } else {
-            next();
+            if (req.headers.hypeer && req.headers.hypeer == 'portal') {
+                res.json({ status: 'available' }).end();
+            } else {
+                next();
+            }
+
         }
     }
 
