@@ -38,6 +38,10 @@ export class HypClient {
             : process.env.IS_PROD == 'true' ? 'https://hypeer.space' : `http://localhost:${process.env.PORT || 3000}`)
             + '?hypeer=entangle';
         this.localhostName = opts.localhost.host ? opts.localhost.host : this.localhostName;
+        this._signaling = this.initSignaling(opts);
+    }
+
+    public initSignaling(opts: opts) {
         let sendCandidate = (data: string | SignalData) => {
             axios.post(this.spaceControl,
                 { subdomain: opts.client?.subdomain, candidates: data }).then((res: any) => {
@@ -52,33 +56,37 @@ export class HypClient {
                     console.log('error' + e);
                 });
         };
-        this._signaling = new Peer({ initiator: true, wrtc: wrtc, trickle: false });
-        this._signaling.on("signal", (data: string | SignalData) => {
-            sendCandidate(data);
-        });
-        this._signaling.on('connect', () => {
-            sendCandidate = (data: string | SignalData) => {
-                this._signaling.send(JSON.stringify({ action: 'signal', candidates: data }));
-            }
-            console.log(`Client entangled. http://${this.subdomain}.${myTldjs.getDomain(this.spaceControl)}:${process.env.PORT || 3000}`);
-        });
-        this._signaling.on('data', (d: Buffer) => {
-            const data = JSON.parse(d && d.length ? d.toString() : '{}');
-            switch (data.action) {
-                case 'signal':
-                    if (data.id) {
-                        this.peers[data.id]?.signal(data.candidates);
-                    } else {
-                        this._signaling.signal(data.candidates);
-                    }
-                    break;
-                case 'create':
-                    this.entangle(data.id);
-                    break;
-                default:
-                    break;
-            }
-        });
+        return new Peer({ initiator: true, wrtc: wrtc, trickle: false })
+            .on("signal", (data: string | SignalData) => {
+                sendCandidate(data);
+            }).on('connect', () => {
+                console.log(`entangled http://${this.subdomain}.${myTldjs.getDomain(this.spaceControl)}`);
+                sendCandidate = (data: string | SignalData) => {
+                    this._signaling.send(JSON.stringify({ action: 'signal', candidates: data }));
+                }
+            }).on('data', (d: Buffer) => {
+                const data = JSON.parse(d && d.length ? d.toString() : '{}');
+                switch (data.action) {
+                    case 'signal':
+                        if (data.id) {
+                            this.peers[data.id]?.signal(data.candidates);
+                        } else {
+                            this._signaling.signal(data.candidates);
+                        }
+                        break;
+                    case 'create':
+                        this.entangle(data.id);
+                        break;
+                    default:
+                        break;
+                }
+            }).on('error', err => {
+                console.log('signaling connection error:', err.message);
+                setTimeout(() => {
+                    this._signaling?.destroy();
+                    this._signaling = this.initSignaling(opts);
+                }, 0);
+            });
     }
 
     public destroy() {
@@ -90,10 +98,6 @@ export class HypClient {
 
     public entangle(id: string) {
         const peer: Peer.Instance = new Peer({ initiator: true, wrtc: wrtc, trickle: true });
-        peer.on('error', err => {
-            console.log('got peer connection error', err.message);
-            delete this.peers[id];
-        });
         const connLocal = () => {
             peer.pause();
             const local: Duplex = net.connect({ host: this.localhostName, port: this.localhostPort });
@@ -108,7 +112,6 @@ export class HypClient {
                 peer.removeListener('close', peerAfterLife);
                 setTimeout(connLocal, 0);
             });
-
             local.once('connect', () => {
                 let stream = peer.pipe(new HeaderTransformer({ host: this.localhostName }), { end: false });
                 stream.pipe(local, { end: false }).pipe(peer, { end: false });
@@ -125,8 +128,10 @@ export class HypClient {
                 });
             });
         };
-
-        peer.on('data', data => {
+        peer.on('error', err => {
+            console.log('got peer connection error', err.message);
+            delete this.peers[id];
+        }).on('data', data => {
             const match = data.toString().match(/^(\w+) (\S+)/);
             if (match) {
                 console.log('proxying request', {
@@ -134,16 +139,11 @@ export class HypClient {
                     path: match[2],
                 });
             }
-        });
-
-        peer.on('connect', () => {
+        }).on('connect', () => {
             connLocal();
-        });
-
-        peer.on("signal", data => {
+        }).on("signal", data => {
             this._signaling.send(JSON.stringify({ action: 'signal', id: id, candidates: data }));
-        });
-
+        }); 
         this.peers[id] = peer;
     }
 }

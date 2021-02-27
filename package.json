@@ -11,8 +11,7 @@
         "start": "node ./build/index.js",
         "postinstall": "npm run build",
         "dev": "ts-node-dev --transpile-only --ignore-watch node_modules ./src/index.ts",
-        "test:playground": "ts-node-dev --transpile-only --ignore-watch node_modules ./src/test/playground.ts",
-        "test:simple-client": "ts-node-dev --transpile-only --ignore-watch node_modules ./src/test/simple-client.ts",
+        "playground": "ts-node-dev --transpile-only --ignore-watch node_modules ./src/test/playground.ts",
         "build": "rimraf ./build && tsc"
     },
     "author": "samuelherrerafuente@gmail.com",
