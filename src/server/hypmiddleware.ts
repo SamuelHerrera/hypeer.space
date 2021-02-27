@@ -100,7 +100,9 @@ export class HypMiddleware {
                 });
             });
         } else {
+            console.log(req.headers);
             if (req.headers.hypeer && req.headers.hypeer == 'portal') {
+                res.setHeader('Access-Control-Allow-Origin', '*');
                 res.json({ status: 'available' }).end();
             } else {
                 next();
