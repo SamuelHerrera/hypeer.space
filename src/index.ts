@@ -9,7 +9,11 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(HypMiddleware.middleware);
 app.all('*', (req, res, next) => {
-    res.send('ok').end();
+    if (process.env.DEFAULT_SITE) {
+        res.redirect(301, process.env.DEFAULT_SITE);
+    } else {
+        res.json({ status: 'online' }).end();
+    }
 });
 
 const server = app.listen(port, () => {
