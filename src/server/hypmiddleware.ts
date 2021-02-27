@@ -100,10 +100,6 @@ export class HypMiddleware {
                 });
             });
         } else {
-            res.setHeader('Access-Control-Allow-Origin', '*')
-            res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-            res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type')
-            res.setHeader('Access-Control-Allow-Credentials', 'true')
             res.send('Not entangled').end();
         }
     }
