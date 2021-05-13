@@ -76,6 +76,7 @@ export class HypClient {
                         break;
                     case 'create':
                         this.entangle(data.id);
+                        console.log(`Called create.entangle with id ${data.id}`);
                         break;
                     default:
                         break;
@@ -102,6 +103,7 @@ export class HypClient {
             peer.pause();
             const local: Duplex = net.connect({ host: this.localhostName, port: this.localhostPort });
             const peerAfterLife = () => {
+                console.log('Called afterlife to destroy peer');
                 delete this.peers[id];
                 local.end();
             };
@@ -117,8 +119,10 @@ export class HypClient {
                 stream.pipe(local, { end: false }).pipe(peer, { end: false });
                 local.once('close', (hadError: any) => {
                     if (hadError) {
-                        console.log(`connection ended with error`);
+                        console.log(`[${id}] connection ended with error`);
                     } else {
+                        console.log(`[${id}] connection ended writable: ${peer.writable}`);
+
                         peer.unpipe(stream);
                         peer.removeListener('close', peerAfterLife);
                         if (peer.writable) {
@@ -143,7 +147,7 @@ export class HypClient {
             connLocal();
         }).on("signal", data => {
             this._signaling.send(JSON.stringify({ action: 'signal', id: id, candidates: data }));
-        }); 
+        });
         this.peers[id] = peer;
     }
 }

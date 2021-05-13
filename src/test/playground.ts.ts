@@ -41,10 +41,10 @@ import { HypMiddleware } from "../server/hypmiddleware";
 
 let c: any = new HypClient({
     client: {
-        subdomain: 'vscode',
+        subdomain: 'test1',
         spaceControlUrl: "https://hypeer.space"
     },
-    localhost: { port: 8888 }
+    localhost: { port: 5500 }
 });
 
 
