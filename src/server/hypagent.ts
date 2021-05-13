@@ -8,7 +8,7 @@ export class HypAgent extends Agent {
         super({
             keepAlive: (process.env.AGENT_KEEP_ALIVE || 'true') == 'true',
             keepAliveMsecs: parseInt(process.env.AGENT_KEEP_ALIVE_MSECS || '10000'),
-            maxSockets: parseInt(process.env.AGENT_MAX_SOCKETS || '50')
+            // maxSockets: parseInt(process.env.AGENT_MAX_SOCKETS || '50')
         });
         this._server = new HypServer();
         this._server.once("error", (err) => {
@@ -18,6 +18,7 @@ export class HypAgent extends Agent {
 
     public createConnection(opt: any, cb: any) {
         const peer = this._server.createConnection();
+        console.log('connection created');
         peer.on("connect", () => {
             cb(null, peer);
         });
