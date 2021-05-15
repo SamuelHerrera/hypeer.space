@@ -10,8 +10,8 @@
     "scripts": {
         "start": "node ./build/index.js",
         "postinstall": "npm run build",
-        "dev": "ts-node-dev --transpile-only --ignore-watch node_modules ./src/index.ts",
-        "playground": "ts-node-dev --transpile-only --ignore-watch node_modules ./src/test/playground.ts",
+        "dev": "set DEBUG=HypServer,index,hyp-middleware,hyp-client & ts-node-dev --transpile-only --ignore-watch node_modules ./src/index.ts",
+        "client": "set DEBUG=HypServer,index,hyp-middleware,hyp-client & ts-node-dev --transpile-only --ignore-watch node_modules ./src/test/client.ts",
         "build": "rimraf ./build && tsc"
     },
     "author": "samuelherrerafuente@gmail.com",

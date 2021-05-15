@@ -1,4 +1,4 @@
-
+import Debug from "debug";
 import net from 'net';
 import Peer, { SignalData } from "simple-peer";
 const wrtc = require("wrtc");
@@ -8,6 +8,8 @@ import axios from 'axios';
 import tldjs from 'tldjs';
 
 const myTldjs = tldjs.fromUserSettings({ validHosts: ['localhost'] });
+const debug = Debug("hyp-client");
+
 interface opts {
     client?: {
         subdomain?: string;
@@ -49,18 +51,18 @@ export class HypClient {
                         this.subdomain = res.data.subdomain;
                         this._signaling.signal(res.data.candidates);
                     } else {
-                        console.log(`Is not possible to stablish the connection.`);
+                        debug(`Is not possible to stablish the connection.`);
                         this._signaling?.destroy();
                     }
                 }).catch((e: any) => {
-                    console.log('error' + e);
+                    debug('error' + e);
                 });
         };
         return new Peer({ initiator: true, wrtc: wrtc, trickle: false })
             .on("signal", (data: string | SignalData) => {
                 sendCandidate(data);
             }).on('connect', () => {
-                console.log(`entangled http://${this.subdomain}.${myTldjs.getDomain(this.spaceControl)}`);
+                debug(`entangled http://${this.subdomain}.${myTldjs.getDomain(this.spaceControl)}`);
                 sendCandidate = (data: string | SignalData) => {
                     this._signaling.send(JSON.stringify({ action: 'signal', candidates: data }));
                 }
@@ -76,13 +78,13 @@ export class HypClient {
                         break;
                     case 'create':
                         this.entangle(data.id);
-                        console.log(`Called create.entangle with id ${data.id}`);
+                        debug(`[${data.id}] Entangled`);
                         break;
                     default:
                         break;
                 }
             }).on('error', err => {
-                console.log('signaling connection error:', err.message);
+                debug('signaling connection error:', err.message);
                 setTimeout(() => {
                     this._signaling?.destroy();
                     this._signaling = this.initSignaling(opts);
@@ -103,13 +105,13 @@ export class HypClient {
             peer.pause();
             const local: Duplex = net.connect({ host: this.localhostName, port: this.localhostPort });
             const peerAfterLife = () => {
-                console.log('Called afterlife to destroy peer');
+                debug(`[${id}] called afterlife to destroy peer`);
                 delete this.peers[id];
                 local.end();
             };
             peer.once('close', peerAfterLife);
             local.once('error', (err: any) => {
-                console.log("error", err)
+                debug("local socket got error ", err)
                 local.end();
                 peer.removeListener('close', peerAfterLife);
                 setTimeout(connLocal, 0);
@@ -119,10 +121,9 @@ export class HypClient {
                 stream.pipe(local, { end: false }).pipe(peer, { end: false });
                 local.once('close', (hadError: any) => {
                     if (hadError) {
-                        console.log(`[${id}] connection ended with error`);
+                        debug(`[${id}] connection ended with error`);
                     } else {
-                        console.log(`[${id}] connection ended writable: ${peer.writable}`);
-
+                        debug(`[${id}] local connection ended, is peer writable [${peer.writable}]`);
                         peer.unpipe(stream);
                         peer.removeListener('close', peerAfterLife);
                         if (peer.writable) {
@@ -133,12 +134,12 @@ export class HypClient {
             });
         };
         peer.on('error', err => {
-            console.log('got peer connection error', err.message);
+            debug('got peer connection error', err.message);
             delete this.peers[id];
         }).on('data', data => {
             const match = data.toString().match(/^(\w+) (\S+)/);
             if (match) {
-                console.log('proxying request', {
+                debug('proxying request', {
                     method: match[1],
                     path: match[2],
                 });

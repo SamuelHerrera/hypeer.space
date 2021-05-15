@@ -1,3 +1,4 @@
+import Debug from "debug";
 import { IncomingMessage, request } from "http";
 import { Request, Response, NextFunction } from "express";
 import { uniqueNamesGenerator, Config, adjectives, colors, animals } from 'unique-names-generator';
@@ -7,6 +8,9 @@ import tldjs from 'tldjs';
 import pump from 'pump';
 
 const myTldjs = tldjs.fromUserSettings({ validHosts: ['localhost'] });
+const debug = Debug("hyp-middleware");
+
+
 export class HypMiddleware {
     private static ENTANGLE_TIMEOUT = 15000;
     private static _agents: { [key: string]: HypAgent; } = {}
@@ -38,7 +42,7 @@ export class HypMiddleware {
                     console.error(err);
                 });
                 agent.createConnection({}, (err: any, conn: any) => {
-                    console.log("< [up] %s", req.url);
+                    debug("< [up] %s", req.url);
                     if (err) {
                         socket.end();
                         return;
@@ -69,35 +73,28 @@ export class HypMiddleware {
         const key = this.getKey(req);
         const agent: HypAgent = this._agents[key];
         if (agent) {
-            const opt = {
-                path: req.url,
-                agent: agent,
-                method: req.method,
-                headers: req.headers,
-            };
-
+            const opt = { path: req.url, agent: agent, method: req.method, headers: req.headers, };
             const clientReq = request(opt);
             clientReq.on('socket', (sock: Socket) => {
                 req.once('end', () => {
+                    debug(`req ended for [${req.url}]`);
                     req.unpipe(clientReq);
                     clientReq.end();
                 });
                 clientReq.on('response', (clientRes: IncomingMessage) => {
                     res.writeHead(clientRes.statusCode || 200, clientRes.headers);
-                    clientRes.pipe(res, { end: false });
                     clientRes.on('end', () => {
+                        debug(`clientRes ended for [${req.url}]`);
                         clientRes.unpipe(res);
                         res.end();
                     });
+                    clientRes.pipe(res, { end: false });
                 });
                 req.pipe(clientReq, { end: false });
             });
             clientReq.once("error", (err) => {
-                res.send({
-                    status: 503,
-                    error: 'Service Unavailable',
-                    message: 'Origin server was disconnected, try again later.'
-                });
+                debug(`clientRes errored for [${req.url}]`);
+                res.end();
             });
         } else {
             res.send('Not entangled').end();
@@ -112,10 +109,10 @@ export class HypMiddleware {
                 let agent = this._agents[key];
                 if (agent) {
                     agent.destroy();
-                } 
+                }
                 agent = new HypAgent();
                 agent.onceClose(() => {
-                    console.log("middleware removing closed client: %s", key);
+                    debug("middleware removing closed client: %s", key);
                     delete this._agents[key];
                     agent.destroy();
                 });
