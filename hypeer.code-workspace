@@ -2,9 +2,9 @@
     "folders": [
         {
             "path": "."
-        },
-        {
-            "path": "..\\plataforma-beneficiarios"
         }
-    ]
+    ],
+    "settings": {
+        "liveServer.settings.multiRootWorkspaceName": "startbootstrap-freelancer-gh-pages"
+    }
 }

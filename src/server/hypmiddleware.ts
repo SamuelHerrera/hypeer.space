@@ -6,6 +6,7 @@ import { HypAgent } from './hypagent';
 import { Socket } from "net";
 import tldjs from 'tldjs';
 import pump from 'pump';
+import * as path from 'path';
 
 const myTldjs = tldjs.fromUserSettings({ validHosts: ['localhost'] });
 const debug = Debug("hyp-middleware");
@@ -93,11 +94,11 @@ export class HypMiddleware {
                 req.pipe(clientReq, { end: false });
             });
             clientReq.once("error", (err) => {
-                debug(`clientRes errored for [${req.url}]`);
+                debug(`clientRes errored for [${req.url}] [${err}]`);
                 res.end();
             });
         } else {
-            res.send('Not entangled').end();
+            next();
         }
     }
 
@@ -173,6 +174,9 @@ export class HypMiddleware {
                     client: clientStats,
                     count: keys.length,
                 });
+                break;
+            case 'hypclient-browser.js':
+                res.sendFile(path.join(__dirname, '../client/www/hypclient-browser.js'));
                 break;
             default:
                 next();
