@@ -14,9 +14,9 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(HypMiddleware.middleware);
-app.use(express.static(path.join(__dirname, '/static')));
+app.use(express.static(path.join(__dirname, '../static')));
 app.all('*', (req, res, next) => {
-    res.sendFile(path.join(__dirname, '/static/index.html'));
+    res.sendFile(path.join(__dirname, '../static/index.html'));
 });
 
 const server = app.listen(port, () => {
