@@ -74,7 +74,7 @@ export class HypMiddleware {
         const key = this.getKey(req);
         const agent: HypAgent = this._agents[key];
         if (agent) {
-            const opt = { path: req.url, agent: agent, method: req.method, headers: req.headers, };
+            const opt = { path: req.url, agent: agent, method: req.method, headers: req.headers };
             const clientReq = request(opt);
             clientReq.on('socket', (sock: Socket) => {
                 req.once('end', () => {
@@ -94,7 +94,7 @@ export class HypMiddleware {
                 req.pipe(clientReq, { end: false });
             });
             clientReq.once("error", (err) => {
-                debug(`clientRes errored for [${req.url}] [${err}]`);
+                debug(`clientReq errored for [${req.url}] [${err}]`);
                 res.end();
             });
         } else {

@@ -84,21 +84,6 @@ export class HypServer extends Server {
     }
 
     public createConnection(cb?: any): Peer.Instance {
-        // if (cb) {
-        //     let aKey;
-        //     for (const key in this._peerState) {
-        //         if (this._peerState[key]) {
-        //             this._peerState[key] = false;
-        //             aKey = key;
-        //             break;
-        //         }
-        //     }
-        //     if (aKey) {
-        //         const peerSocket = this._connectedPeers[aKey];
-        //         cb(null, peerSocket);
-        //         return peerSocket;
-        //     }
-        // }
         const nid = uuidv4();
         debug(`[${nid}] Starting connection`);
         const peer: HypeerSocket = <HypeerSocket>new Peer({ wrtc: wrtc, trickle: true });

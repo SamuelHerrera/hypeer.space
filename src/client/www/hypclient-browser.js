@@ -4,6 +4,9 @@ var HypClient = function () {
     const http = axios.create();
     const spaceControl = `?hypeer=entangle`
     let clientHost;
+    const unsafeHeaders = ["host", "connection", "sec-ch-ua", "sec-ch-ua-mobile", "user-agent", "sec-fetch-site",
+        "sec-fetch-mode", "sec-fetch-dest", "referer", "accept-encoding", "sec-fetch-user"];
+
 
     const initSignaling = (subdomain, localhost) => {
         clientHost = localhost;
@@ -12,7 +15,7 @@ var HypClient = function () {
                 { subdomain: subdomain, candidates: data }).then((res) => {
                     if (res.data?.status == 'entangled') {
                         subdomain = res.data.subdomain;
-                        signalPeers[subdomain].signal(res.data.candidates);
+                        signalPeers[subdomain]?.signal(res.data.candidates);
                     } else {
                         console.log(`Is not possible to stablish the connection.`);
                         signalPeers[subdomain]?.destroy();
@@ -70,9 +73,6 @@ var HypClient = function () {
 
     const entangle = (id, subdomain) => {
         const peer = new SimplePeer({ initiator: true, trickle: true });
-        const connLocal = () => {
-            console.log('reached connection local!');
-        };
         peer.on('error', err => {
             console.log('got peer connection error', err.message);
             delete signalPeers[subdomain]['peerList'][id];
@@ -83,18 +83,17 @@ var HypClient = function () {
                 const matchHeaders = strDat.match(/([\w-]+): (.*)/g);
                 const headers = {};
                 for (let x in matchHeaders) {
-                    console.log(matchHeaders[x]);
                     if (typeof matchHeaders[x] == "string") {
                         let y = matchHeaders[x].split(/(?<=^\S+)\s/);
-                        if (y[0].toLowerCase() != 'host') {
+                        y[0] = y[0].slice(0, -1);
+                        if (!unsafeHeaders.includes(y[0].toLowerCase())) {
                             headers[y[0]] = y[1];
                         }
                     }
 
                 }
-                console.log(match, matchHeaders);
                 const method = match[1], path = match[2];
-                console.log('proxying request to ' + clientHost, { method, path, headers });
+                console.log(`[${id}] 'proxying [${method} ${path}] to ${clientHost}`);
                 try {
                     http({ method: method.toLowerCase(), url: `${clientHost}${path}`, headers: headers }).
                         then((response) => {
@@ -103,11 +102,13 @@ var HypClient = function () {
                                 headersString += `${k}: ${response.headers[k]}\r\n`;
                             }
                             const resp = `HTTP/1.0 ${response.status} ${response.statusText}\r\n${headersString}\r\n${response.data}\r\n\r\n`;
-                            console.log(response, headersString);
                             peer.send(resp);
                         }).catch((err) => {
-                            console.log(err);
-                            peer.send(`HTTP/1.0 500 ${response.status} BAD REQUEST\r\n\r\n\r\n`);
+                            let headersString = '';
+                            for (let k in err.response.headers) {
+                                headersString += `${k}: ${err.response.headers[k]}\r\n`;
+                            }
+                            peer.send(`HTTP/1.0 ${err.response.status} ${err.response.statusText}\r\n${headersString}\r\n${err.response.data}\r\n\r\n`);
                         });
                 } catch (e) {
                     console.log(`Answering ${method} ${path} with error ${e}`);
@@ -115,7 +116,7 @@ var HypClient = function () {
                 }
             }
         }).on('connect', () => {
-            connLocal();
+            console.log(`[${id}] connected`);
         }).on("signal", data => {
             signalPeers[subdomain].send(JSON.stringify({ action: 'signal', id: id, candidates: data }));
         });
