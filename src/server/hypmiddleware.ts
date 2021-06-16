@@ -89,9 +89,9 @@ export class HypMiddleware {
                         clientRes.unpipe(res);
                         res.end();
                     });
-                    clientRes.pipe(res, { end: false });
+                    clientRes.pipe(res);
                 });
-                req.pipe(clientReq, { end: false });
+                req.pipe(clientReq);
             });
             clientReq.once("error", (err) => {
                 debug(`clientReq errored for [${req.url}] [${err}]`);
