@@ -148,7 +148,7 @@ export class HypClient {
         peer.resume();
         debug(`[${id}] local connected, entangling`);
         let stream = peer.pipe(new HeaderTransformer({ host: this.localhostName }));
-        stream.pipe(local).pipe(peer);
+        stream.pipe(local, {end: false}).pipe(peer, {end: false});
         debug(`[${id}] entangled`);
         local.once('close', (hadError: any) => {
           if (hadError) {

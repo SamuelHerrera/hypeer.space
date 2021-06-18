@@ -11,7 +11,6 @@ import * as path from 'path';
 const myTldjs = tldjs.fromUserSettings({ validHosts: ['localhost'] });
 const debug = Debug("hyp-middleware");
 
-
 export class HypMiddleware {
   private static ENTANGLE_TIMEOUT = 15000;
   private static _agents: { [key: string]: HypAgent; } = {}
@@ -72,7 +71,6 @@ export class HypMiddleware {
 
   private static hypeerPortalAgentControl(req: Request, res: Response, next: NextFunction) {
     const key = this.getKey(req);
-
     const agent: HypAgent = this._agents[key];
     debug(`hypeerPortalAgentControl handling req for client [${key}]`);
     if (agent) {
@@ -182,8 +180,7 @@ export class HypMiddleware {
 
   private static getKey(req: Request) {
     const hs = myTldjs.getSubdomain(req.headers.host || '') || null;
-    const c = (hs ? hs : uniqueNamesGenerator(this.customConfig));
-    return c;
+    return (hs ? hs : uniqueNamesGenerator(this.customConfig));
   }
 
   private static secret(req: Request, res: Response) {

@@ -5,8 +5,8 @@ import { HypMiddleware } from "../server/hypmiddleware";
 
 dotenv.config();
 
-const subdomain = 'a';
-const spaceControlUrl = undefined; //'https://hypeer.space'//undefined
+const subdomain = 'test';
+const spaceControlUrl = undefined //'https://hypeer.space'
 const port = process.env.PORT || 4500;
 const clientPort = 3000;
 
