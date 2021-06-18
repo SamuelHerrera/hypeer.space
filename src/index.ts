@@ -12,7 +12,6 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
 app.use(HypMiddleware.middleware);
 app.use(express.static(path.join(__dirname, '../static')));
 app.all('*', (req, res, next) => {
