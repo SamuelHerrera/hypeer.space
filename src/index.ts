@@ -1,23 +1,25 @@
+import Debug from "debug";
 import * as dotenv from "dotenv";
 import express from 'express';
-import { HypMiddleware } from './server/hypmiddleware'
+import { HypMiddleware } from './server/hypmiddleware';
+import cors from 'cors';
+import * as path from 'path';
 
 dotenv.config();
-const app = express();
-const port = process.env.PORT || 3000;
 
-app.use(express.json());
+const debug = Debug("index");
+const app = express();
+const port = process.env.PORT || 8805;
+
+app.use(cors());
 app.use(HypMiddleware.middleware);
+app.use(express.static(path.join(__dirname, '../static')));
 app.all('*', (req, res, next) => {
-    if (process.env.DEFAULT_SITE) {
-        res.redirect(301, process.env.DEFAULT_SITE);
-    } else {
-        res.json({ status: 'online' }).end();
-    }
+    res.sendFile(path.join(__dirname, '../static/index.html'));
 });
 
 const server = app.listen(port, () => {
-    console.log("Server started on port " + port);
+    debug(`Server started on port ${port}`);
 });
 
 server.on('upgrade', HypMiddleware.wsMiddleware);

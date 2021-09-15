@@ -1,0 +1,160 @@
+button,
+.ce-button,
+input[type="radio"] + label {
+  background: var(--accent-color);
+  color: var(--primary-text);
+  border: 0;
+  opacity: 1;
+  margin: 5px;
+  padding: 0;
+  -webkit-box-shadow: inset 0px 0px 0px 0px var(--light-accent-color), 1px 1px transparent;
+          box-shadow: inset 0px 0px 0px 0px var(--light-accent-color), 1px 1px transparent;
+  cursor: pointer;
+  -webkit-transition: all 150ms ease-in;
+  transition: all 150ms ease-in;
+  -webkit-transition-property: background, -webkit-box-shadow;
+  transition-property: background, -webkit-box-shadow;
+  transition-property: box-shadow, background;
+  transition-property: box-shadow, background, -webkit-box-shadow;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: row;
+          flex-direction: row;
+  -ms-flex-wrap: wrap;
+      flex-wrap: wrap;
+  -ms-flex-line-pack: distribute;
+      align-content: space-around;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  overflow: hidden;
+  font-size: var(--font-size);
+  -webkit-user-select: none;
+     -moz-user-select: none;
+      -ms-user-select: none;
+          user-select: none;
+}
+
+button > i,
+.ce-button > i,
+input[type="radio"] + label > i {
+  color: var(--light-primary-color);
+}
+
+button > i:only-child,
+.ce-button > i:only-child,
+input[type="radio"] + label > i:only-child {
+  color: var(--text-icons);
+}
+
+button span,
+.ce-button span,
+input[type="radio"] + label span {
+  font-weight: 600;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  height: 100%;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+      -ms-flex-direction: row;
+          flex-direction: row;
+  -ms-flex-wrap: nowrap;
+      flex-wrap: nowrap;
+  -ms-flex-line-pack: center;
+      align-content: center;
+  -webkit-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+}
+
+button > *,
+.ce-button > *,
+input[type="radio"] + label > * {
+  margin: 0.3rem;
+  z-index: 0;
+}
+
+button.inverted,
+.ce-button.inverted,
+input[type="radio"] + label.inverted {
+  background: var(--primary-color);
+  -webkit-box-shadow: inset 0px 0px 0px 0px var(--light-primary-color), 1px 1px transparent;
+          box-shadow: inset 0px 0px 0px 0px var(--light-primary-color), 1px 1px transparent;
+}
+
+button.inverted span,
+.ce-button.inverted span,
+input[type="radio"] + label.inverted span {
+  text-shadow: 1px 1px 2px var(--light-primary-color);
+}
+
+button.inverted > i,
+.ce-button.inverted > i,
+input[type="radio"] + label.inverted > i {
+  color: var(--light-accent-color);
+}
+
+button.inverted > i:only-child,
+.ce-button.inverted > i:only-child,
+input[type="radio"] + label.inverted > i:only-child {
+  color: var(--text-icons);
+}
+
+@media (hover: hover) {
+  .ce-button:hover,
+  button:hover,
+  input[type="radio"]:checked + label {
+    -webkit-box-shadow: inset 0px 0px 0px 100px var(--light-accent-color), 2px 2px 2px var(--dark-accent-color);
+            box-shadow: inset 0px 0px 0px 100px var(--light-accent-color), 2px 2px 2px var(--dark-accent-color);
+  }
+  .ce-button:hover.inverted,
+  button:hover.inverted,
+  input[type="radio"]:checked + label.inverted {
+    -webkit-box-shadow: inset 0px 0px 0px 100px var(--light-primary-color), 2px 2px 2px var(--dark-primary-color);
+            box-shadow: inset 0px 0px 0px 100px var(--light-primary-color), 2px 2px 2px var(--dark-primary-color);
+  }
+  input[type="radio"]:checked + label {
+    border: solid 1px yellow;
+  }
+  .ce-button:hover:active,
+  button:hover:active {
+    background: var(--dark-accent-color);
+    -webkit-box-shadow: inset 0px 0px 0px 0px var(--light-accent-color), 0px 0px 0px transparent;
+            box-shadow: inset 0px 0px 0px 0px var(--light-accent-color), 0px 0px 0px transparent;
+  }
+  .ce-button:hover:active.inverted,
+  button:hover:active.inverted {
+    background: var(--dark-primary-color);
+    -webkit-box-shadow: inset 0px 0px 0px 0px var(--light-primary-color), 0px 0px 0px transparent;
+            box-shadow: inset 0px 0px 0px 0px var(--light-primary-color), 0px 0px 0px transparent;
+  }
+}
+
+@media (hover: none), (hover: on-demand) {
+  .ce-button:hover:active,
+  button:hover:active,
+  input[type="radio"]:checked + label {
+    -webkit-box-shadow: inset 0px 0px 0px calc(16px * var(--button-size, 1)) var(--dark-accent-color), 0px 0px 0px transparent;
+            box-shadow: inset 0px 0px 0px calc(16px * var(--button-size, 1)) var(--dark-accent-color), 0px 0px 0px transparent;
+  }
+  .ce-button:hover:active.inverted,
+  button:hover:active.inverted,
+  input[type="radio"]:checked + label.inverted {
+    -webkit-box-shadow: inset 0px 0px 0px calc(16px * var(--button-size, 1)) var(--dark-primary-color), 0px 0px 0px transparent;
+            box-shadow: inset 0px 0px 0px calc(16px * var(--button-size, 1)) var(--dark-primary-color), 0px 0px 0px transparent;
+  }
+  input[type="radio"]:checked + label {
+    border: solid 1px yellow;
+  }
+}
+/*# sourceMappingURL=buttons.css.map */
