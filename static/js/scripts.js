@@ -34,6 +34,10 @@
             label: 'VNC',
             link: 'https://vnc.hypeer.space',
             handler: btnBuilder
+        }, {
+            label: 'Notes',
+            link: 'https://notes.hypeer.space',
+            handler: btnBuilder
         },
         {
             label: 'File server',
@@ -86,8 +90,8 @@
             link: 'https://gitlab.com/dashboard/projects',
             handler: btnBuilder
         },
-        
-        
+
+
     ]
     for (let btnD of buttons) {
         let span = document.createElement("span");
