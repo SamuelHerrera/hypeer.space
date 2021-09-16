@@ -62,10 +62,32 @@
             }
         },
         {
+            label: 'Uptime-kuma',
+            link: 'https://uptime.hypeer.space',
+            handler: btnBuilder
+        },
+        {
+            label: 'Cloudflare dash',
+            link: 'https://dash.cloudflare.com',
+            handler: btnBuilder
+        },
+        {
             label: 'Cloudflare teams',
             link: 'https://dash.teams.cloudflare.com',
             handler: btnBuilder
         },
+        {
+            label: 'Dashboad heroku',
+            link: 'https://dashboard.heroku.com/apps',
+            handler: btnBuilder
+        },
+        {
+            label: 'Gitlab',
+            link: 'https://gitlab.com/dashboard/projects',
+            handler: btnBuilder
+        },
+        
+        
     ]
     for (let btnD of buttons) {
         let span = document.createElement("span");
