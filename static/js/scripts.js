@@ -90,6 +90,16 @@
             link: 'https://gitlab.com/dashboard/projects',
             handler: btnBuilder
         },
+        {
+            label: 'Webmail',
+            link: 'https://webmail.hypeer.space',
+            handler: btnBuilder
+        },
+        {
+            label: 'Botpress',
+            link: 'https://botpress.hypeer.space',
+            handler: btnBuilder
+        },
 
 
     ]
